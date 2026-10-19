@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kalkulator Jasa Pelayanan Perawat</title>
+<style>
+:root{
+  --bg:#f4f6f9; --card:#ffffff; --text:#1a2233; --muted:#5b6578;
+  --accent:#1f4e78; --accent2:#2e7d32; --warn:#b45309; --border:#dbe1ea; --input-bg:#fffbea;
+  --head-bg:#1f4e78; --head-text:#ffffff; --total-bg:#e3edf7;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#13161c; --card:#1b1f27; --text:#e8ecf3; --muted:#9aa3b5;
+    --accent:#6fa8dc; --accent2:#7fd396; --warn:#f0b363; --border:#2b3240; --input-bg:#2a2616;
+    --head-bg:#223049; --head-text:#e8ecf3; --total-bg:#20283a;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  padding:16px 14px calc(24px + env(safe-area-inset-bottom,0px));
+  padding-top:calc(16px + env(safe-area-inset-top,0px));
+}
+h1{font-size:1.25rem; margin:0 0 2px;}
+p.sub{color:var(--muted); font-size:.82rem; margin:0 0 14px; line-height:1.4;}
+.card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:16px;}
+.card h2{font-size:.95rem; margin:0 0 10px; color:var(--accent);}
+label{display:block; font-size:.74rem; color:var(--muted); margin-bottom:4px;}
+input,select{font-family:inherit;}
+input[type=number], input[type=text], select{
+  width:100%; padding:8px 9px; border-radius:8px; border:1px solid var(--border);
+  background:var(--input-bg); color:var(--text); font-size:.85rem;
+}
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;}
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-top:12px;}
+.stat{background:var(--total-bg); border-radius:10px; padding:10px 12px;}
+.stat .lab{font-size:.7rem; color:var(--muted);}
+.stat .val{font-size:1rem; font-weight:700; color:var(--accent2); word-break:break-word;}
+.stat .val.w{color:var(--warn);}
+table{width:100%; border-collapse:collapse; font-size:.8rem;}
+th,td{padding:6px 5px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap;}
+th{background:var(--head-bg); color:var(--head-text); font-weight:600; font-size:.68rem; text-transform:uppercase; letter-spacing:.02em; position:sticky; top:0; z-index:2;}
+td input,td select{padding:5px 6px; font-size:.8rem;}
+td.num,th.num{text-align:right;}
+td.ro{background:var(--total-bg); font-weight:600; text-align:right;}
+tfoot td{background:var(--total-bg); font-weight:700; position:sticky; bottom:0;}
+.tablewrap{overflow:auto; -webkit-overflow-scrolling:touch; max-height:70vh; border:1px solid var(--border); border-radius:8px;}
+.rowbtn{background:none; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:4px 8px; cursor:pointer; font-size:.75rem;}
+.actions{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; align-items:center;}
+button.primary{background:var(--accent); color:#fff; border:none; padding:10px 14px; border-radius:9px; font-size:.82rem; font-weight:600; cursor:pointer;}
+button.ghost{background:transparent; border:1px solid var(--border); color:var(--text); padding:10px 14px; border-radius:9px; font-size:.82rem; cursor:pointer;}
+button.danger{background:transparent; border:1px solid #c0392b; color:#c0392b; padding:10px 14px; border-radius:9px; font-size:.82rem; cursor:pointer;}
+.tabs{display:flex; gap:6px; margin-bottom:12px;}
+.tab{flex:1; padding:10px; border-radius:9px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:.85rem; font-weight:600; cursor:pointer;}
+.tab.on{background:var(--accent); color:#fff; border-color:var(--accent);}
+.formula{font-size:.75rem; color:var(--muted); background:var(--total-bg); border-radius:8px; padding:8px 10px; margin-top:10px; line-height:1.55;}
+.warn{color:var(--warn); font-size:.78rem; margin-top:8px;}
+.saved{font-size:.75rem; color:var(--muted);}
+.hide{display:none;}
+.src{font-size:.68rem; color:var(--muted); margin-top:18px; line-height:1.5;}
+</style>
+</head>
+<body>
+
+<h1>Kalkulator Jasa Pelayanan Perawat</h1>
+<p class="sub">Pembagian jasa pelayanan langsung perawat: <b>pool bersama</b> dibagi ke seluruh perawat, <b>pool ruangan</b> dibagi ke perawat tiap ruangan sesuai pendapatan ruangan. Semua kolom bisa diedit.</p>
+
+<div class="card">
+  <h2>1. Pengaturan</h2>
+  <div class="grid">
+    <div><label>Periode</label><input type="text" id="periode" oninput="S.periode=this.value;changed()"></div>
+    <div><label>% Pool bersama (semua perawat)</label><input type="number" id="pct" step="0.1" min="0" max="100" oninput="S.pct=clamp(parseFloat(this.value)||0,0,100);changed()"></div>
+    <div><label>% Pool ruangan (otomatis)</label><input type="number" id="pct2" disabled></div>
+    <div><label>Target jumlah perawat</label><input type="number" id="target" oninput="S.target=parseInt(this.value)||0;changed()"></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="lab">Total Pendapatan (100%)</div><div class="val" id="sTotal">Rp 0</div></div>
+    <div class="stat"><div class="lab" id="lPool80">Pool Bersama</div><div class="val" id="sPool80">Rp 0</div></div>
+    <div class="stat"><div class="lab" id="lPool20">Pool Ruangan</div><div class="val" id="sPool20">Rp 0</div></div>
+    <div class="stat"><div class="lab">Jumlah Perawat</div><div class="val" id="sCount">0</div></div>
+    <div class="stat"><div class="lab">Total Jasa Terbagi</div><div class="val" id="sDist">Rp 0</div></div>
+    <div class="stat"><div class="lab">Sisa Tidak Terbagi</div><div class="val" id="sLeft">Rp 0</div></div>
+  </div>
+  <div class="warn" id="warn"></div>
+  <div class="formula">
+    <b>Indeks</b> = Nilai Jabatan × IKI<br>
+    <b>Jasa Bersama</b> = (Indeks perawat ÷ Total indeks semua perawat) × Pool bersama<br>
+    <b>Pool Ruangan</b> = (Pendapatan ruangan ÷ Total pendapatan) × Total pool ruangan<br>
+    <b>Jasa Ruangan</b> = (Indeks perawat ÷ Total indeks ruangannya) × Pool ruangan<br>
+    <b>Total Jasa</b> = Jasa Bersama + Jasa Ruangan
+  </div>
+  <div class="actions">
+    <button class="primary" onclick="exportXlsx()">⬇ Ekspor Excel</button>
+    <button class="ghost" onclick="backup()">Backup (.json)</button>
+    <button class="ghost" onclick="document.getElementById('imp').click()">Buka Backup</button>
+    <button class="danger" onclick="resetAll()">Reset</button>
+    <input type="file" id="imp" accept=".json,application/json" class="hide" onchange="restore(this)">
+    <span class="saved" id="saved"></span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab on" id="tabR" onclick="showTab('R')">2. Ruangan</button>
+  <button class="tab" id="tabN" onclick="showTab('N')">3. Data Perawat</button>
+</div>
+
+<div class="card" id="paneR">
+  <h2>Ruangan &amp; Pendapatan</h2>
+  <div class="tablewrap"><table>
+    <thead><tr>
+      <th>No</th><th>Ruangan</th><th class="num">Pendapatan (100%)</th><th class="num">Jml Perawat</th>
+      <th class="num">Total Indeks</th><th class="num">Pool Ruangan</th><th class="num">Jasa Bersama</th><th class="num">Jasa Ruangan</th><th class="num">Total Jasa</th><th class="num">Rata-rata / Perawat</th><th></th>
+    </tr></thead>
+    <tbody id="tbR"></tbody>
+    <tfoot id="tfR"></tfoot>
+  </table></div>
+  <div class="actions"><button class="ghost" onclick="addRoom()">+ Tambah Ruangan</button></div>
+  <p class="saved" style="margin-top:8px">Mengubah <b>Jml Perawat</b> otomatis menambah / mengurangi baris di Data Perawat.</p>
+</div>
+
+<div class="card hide" id="paneN">
+  <h2>Data Perawat</h2>
+  <div class="grid" style="margin-bottom:10px">
+    <div><label>Filter ruangan</label><select id="fRoom" onchange="renderNurses()"></select></div>
+    <div><label>Cari nama</label><input type="text" id="fText" oninput="renderNurses()" placeholder="ketik nama…"></div>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr>
+      <th>No</th><th>Nama</th><th>Ruangan</th><th>Grade</th><th class="num">Nilai Jabatan</th><th class="num">IKI</th>
+      <th class="num">Indeks</th><th class="num">Jasa Bersama</th><th class="num">Jasa Ruangan</th><th class="num">Total Jasa</th><th></th>
+    </tr></thead>
+    <tbody id="tbN"></tbody>
+    <tfoot id="tfN"></tfoot>
+  </table></div>
+  <p class="saved" style="margin-top:8px">Rentang Nilai Jabatan: N1 636–763 · N2 764–955 · N3 956–1195 · N4 1196–1495 · N5 1496–1869. Pilih grade untuk mengisi nilai awal, lalu edit manual jika perlu. IKI lazim 0,8–1,5.</p>
+  <div class="actions"><button class="ghost" onclick="addNurse()">+ Tambah Perawat</button></div>
+</div>
+
+<p class="src">Mengacu pada mekanisme Kepdirjen Yankes Kemenkes No. HK.02.02/D/286/2025 (insentif individu dari nilai jabatan × IKI). Jumlah perawat di ruangan selain IGD (39) dan Wing Transit (8) masih <b>perkiraan awal</b> (sisa 376 dibagi sebanding pendapatan) — silakan koreksi.</p>
+
+<script>
+const KEY = 'jasa_perawat_v1';
+const GRADE = {N1:636, N2:764, N3:956, N4:1196, N5:1496};
+const ROOMS = [["IGD",168078834],["IRJ",88406328],["IBS",116257227],["ICU I",37883038],["HEMODIALISA",81767058],["KEMUNING",24844149],["ANGGREK",31423136],["ANYELIR",20976829],["DAHLIA",20407938],["TERATAI",23523292],["PICU",32167120],["MELATI",23461957],["ICU II",17488939],["STROKE UNIT",9381970],["WING TRANSIT",13177805],["NICU",29500317],["EDELWEIS",13542981],["BOUGENVILE",11215765],["NEONATAL",21187646],["KENANGA",13104605],["MAHKOTA",10613298],["MAWAR",9197090],["THALASEMIA",6123988],["VK",4781781],["FLAMBOYAN",4360390]];
+const FIXED = {"IGD":39, "WING TRANSIT":8};
+const TARGET = 423;
+
+let S;
+let RES = {}, RRES = {}, TOT = {};
+
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Math.round(isNaN(n)?0:n).toLocaleString('id-ID');
+const rp=n=>'Rp '+fmt(n);
+const dec=n=>(isNaN(n)?0:n).toLocaleString('id-ID',{maximumFractionDigits:2});
+
+function defaults(){
+  const rooms = ROOMS.map((r,i)=>({id:i+1,name:r[0],rev:r[1]}));
+  const rest = TARGET - Object.values(FIXED).reduce((a,b)=>a+b,0);
+  const others = rooms.filter(r=>!(r.name in FIXED));
+  const sumRev = others.reduce((a,r)=>a+r.rev,0);
+  const q = others.map(r=>{const x=r.rev/sumRev*rest; return {id:r.id,fl:Math.floor(x),fr:x-Math.floor(x)};});
+  let left = rest - q.reduce((a,x)=>a+x.fl,0);
+  [...q].sort((a,b)=>b.fr-a.fr).slice(0,left).forEach(x=>x.fl++);
+  const cnt = {}; q.forEach(x=>cnt[x.id]=x.fl);
+  const nurses = []; let nid=1;
+  rooms.forEach(r=>{
+    const n = r.name in FIXED ? FIXED[r.name] : cnt[r.id];
+    for(let k=1;k<=n;k++) nurses.push({id:nid++, name:`Perawat ${r.name} ${k}`, room:r.id, grade:'N2', nilai:GRADE.N2, iki:1});
+  });
+  return {periode:'Agustus 2026', pct:80, target:TARGET, rooms, nurses, nextRoom:rooms.length+1, nextNurse:nid};
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){ const d=JSON.parse(raw); if(d && Array.isArray(d.rooms) && Array.isArray(d.nurses)) return d; }
+  }catch(e){}
+  return defaults();
+}
+
+let saveTimer=null;
+function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(S));
+    const t=new Date(); document.getElementById('saved').textContent='✓ Tersimpan otomatis '+t.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    document.getElementById('saved').textContent='⚠ Penyimpanan browser tidak tersedia — gunakan Backup (.json)';
+  }
+}
+function changed(){ calc(); clearTimeout(saveTimer); saveTimer=setTimeout(save,300); }
+
+/* ---------- Perhitungan ---------- */
+function calc(){
+  const total = S.rooms.reduce((a,r)=>a+(+r.rev||0),0);
+  const pool80 = total*S.pct/100, pool20 = total-pool80;
+  const roomIdx={}, roomCnt={};
+  let idxAll=0;
+  S.nurses.forEach(n=>{
+    const ix=(+n.nilai||0)*(+n.iki||0);
+    idxAll+=ix; roomIdx[n.room]=(roomIdx[n.room]||0)+ix; roomCnt[n.room]=(roomCnt[n.room]||0)+1;
+  });
+  RES={}; RRES={};
+  S.rooms.forEach(r=>{
+    RRES[r.id]={cnt:roomCnt[r.id]||0, idx:roomIdx[r.id]||0, pool:total>0?(+r.rev||0)/total*pool20:0, a:0,b:0,t:0};
+  });
+  S.nurses.forEach(n=>{
+    const ix=(+n.nilai||0)*(+n.iki||0);
+    const rr=RRES[n.room];
+    const a = idxAll>0 ? ix/idxAll*pool80 : 0;
+    const b = rr && rr.idx>0 ? ix/rr.idx*rr.pool : 0;
+    RES[n.id]={ix,a,b,t:a+b};
+    if(rr){rr.a+=a;rr.b+=b;rr.t+=a+b;}
+  });
+  const dist = Object.values(RES).reduce((s,x)=>s+x.t,0);
+  TOT={total,pool80,pool20,idxAll,dist,count:S.nurses.length};
+
+  // ringkasan
+  setT('sTotal',rp(total)); setT('sPool80',rp(pool80)); setT('sPool20',rp(pool20));
+  setT('lPool80',`Pool Bersama (${dec(S.pct)}%)`); setT('lPool20',`Pool Ruangan (${dec(100-S.pct)}%)`);
+  setT('sCount',fmt(TOT.count)); setT('sDist',rp(dist)); setT('sLeft',rp(total-dist));
+  document.getElementById('pct2').value = +(100-S.pct).toFixed(2);
+  const left = total-dist;
+  document.getElementById('sLeft').className='val'+(Math.abs(left)>1?' w':'');
+  const w=[];
+  if(S.target && TOT.count!==S.target) w.push(`Jumlah perawat ${TOT.count}, target ${S.target} (selisih ${TOT.count-S.target>0?'+':''}${TOT.count-S.target}).`);
+  const empty=S.rooms.filter(r=>(RRES[r.id].cnt===0)&&(+r.rev>0)).map(r=>r.name);
+  if(empty.length) w.push(`Ruangan tanpa perawat (pool ruangannya tidak terbagi): ${empty.join(', ')}.`);
+  setT('warn',w.join(' '));
+
+  // tabel ruangan
+  let sc=0,si=0,sp=0,sa=0,sb=0,st=0;
+  S.rooms.forEach(r=>{
+    const x=RRES[r.id];
+    setT('rc-'+r.id,fmt(x.cnt)); // placeholder, input separately
+    const ci=document.getElementById('rcnt-'+r.id); if(ci && document.activeElement!==ci) ci.value=x.cnt;
+    setT('ri-'+r.id,dec(x.idx)); setT('rp-'+r.id,fmt(x.pool)); setT('ra-'+r.id,fmt(x.a)); setT('rb-'+r.id,fmt(x.b)); setT('rt-'+r.id,fmt(x.t));
+    setT('rv-'+r.id,x.cnt?fmt(x.t/x.cnt):'-');
+    sc+=x.cnt;si+=x.idx;sp+=x.pool;sa+=x.a;sb+=x.b;st+=x.t;
+  });
+  const tf=document.getElementById('tfR');
+  tf.innerHTML=`<tr><td></td><td>TOTAL</td><td class="num">${fmt(total)}</td><td class="num">${fmt(sc)}</td><td class="num">${dec(si)}</td><td class="num">${fmt(sp)}</td><td class="num">${fmt(sa)}</td><td class="num">${fmt(sb)}</td><td class="num">${fmt(st)}</td><td class="num">${sc?fmt(st/sc):'-'}</td><td></td></tr>`;
+
+  // tabel perawat
+  let na=0,nb=0,nt=0,ni=0,shown=0;
+  S.nurses.forEach(n=>{
+    const x=RES[n.id];
+    if(document.getElementById('ni-'+n.id)){
+      setT('ni-'+n.id,dec(x.ix)); setT('na-'+n.id,fmt(x.a)); setT('nb-'+n.id,fmt(x.b)); setT('nt-'+n.id,fmt(x.t));
+      na+=x.a;nb+=x.b;nt+=x.t;ni+=x.ix;shown++;
+    }
+  });
+  document.getElementById('tfN').innerHTML=`<tr><td></td><td>TOTAL (${shown} ditampilkan)</td><td></td><td></td><td></td><td></td><td class="num">${dec(ni)}</td><td class="num">${fmt(na)}</td><td class="num">${fmt(nb)}</td><td class="num">${fmt(nt)}</td><td></td></tr>`;
+}
+function setT(id,t){const e=document.getElementById(id); if(e) e.textContent=t;}
+
+/* ---------- Render ---------- */
+function roomOptions(sel){ return S.rooms.map(r=>`<option value="${r.id}" ${r.id===sel?'selected':''}>${esc(r.name)}</option>`).join(''); }
+
+function renderRooms(){
+  document.getElementById('tbR').innerHTML = S.rooms.map((r,i)=>`<tr>
+    <td>${i+1}</td>
+    <td><input type="text" value="${esc(r.name)}" style="width:130px" oninput="roomEdit(${r.id},'name',this.value)"></td>
+    <td><input type="number" value="${r.rev}" style="width:120px;text-align:right" oninput="roomEdit(${r.id},'rev',parseFloat(this.value)||0)"></td>
+    <td><input type="number" id="rcnt-${r.id}" min="0" value="0" style="width:64px;text-align:right" onchange="setCount(${r.id},this)"></td>
+    <td class="ro" id="ri-${r.id}"></td><td class="ro" id="rp-${r.id}"></td><td class="ro" id="ra-${r.id}"></td><td class="ro" id="rb-${r.id}"></td><td class="ro" id="rt-${r.id}"></td><td class="ro" id="rv-${r.id}"></td>
+    <td><button class="rowbtn" onclick="delRoom(${r.id})">✕</button></td>
+  </tr>`).join('');
+  const f=document.getElementById('fRoom'), cur=f.value;
+  f.innerHTML='<option value="">Semua ruangan</option>'+S.rooms.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('');
+  f.value=cur;
+  calc();
+}
+function roomEdit(id,k,v){
+  const r=S.rooms.find(x=>x.id===id); r[k]=v;
+  if(k==='name'){ // refresh dropdown labels
+    const f=document.getElementById('fRoom'); const o=[...f.options].find(o=>o.value==id); if(o) o.textContent=v;
+    document.querySelectorAll(`select.nroom option[value="${id}"]`).forEach(o=>o.textContent=v);
+  }
+  changed();
+}
+function renderNurses(){
+  const fr=document.getElementById('fRoom').value, ft=document.getElementById('fText').value.trim().toLowerCase();
+  const list=S.nurses.map((n,i)=>({n,i})).filter(({n})=>(!fr||String(n.room)===fr)&&(!ft||n.name.toLowerCase().includes(ft)));
+  document.getElementById('tbN').innerHTML = list.map(({n,i})=>`<tr>
+    <td>${i+1}</td>
+    <td><input type="text" value="${esc(n.name)}" style="width:150px" oninput="nEdit(${n.id},'name',this.value)"></td>
+    <td><select class="nroom" style="width:120px" onchange="nEdit(${n.id},'room',parseInt(this.value),true)">${roomOptions(n.room)}</select></td>
+    <td><select style="width:62px" onchange="nGrade(${n.id},this.value)">${Object.keys(GRADE).map(g=>`<option ${n.grade===g?'selected':''}>${g}</option>`).join('')}</select></td>
+    <td><input type="number" id="nn-${n.id}" value="${n.nilai}" style="width:76px;text-align:right" oninput="nEdit(${n.id},'nilai',parseFloat(this.value)||0)"></td>
+    <td><input type="number" step="0.01" value="${n.iki}" style="width:64px;text-align:right" oninput="nEdit(${n.id},'iki',parseFloat(this.value)||0)"></td>
+    <td class="ro" id="ni-${n.id}"></td><td class="ro" id="na-${n.id}"></td><td class="ro" id="nb-${n.id}"></td><td class="ro" id="nt-${n.id}"></td>
+    <td><button class="rowbtn" onclick="delNurse(${n.id})">✕</button></td>
+  </tr>`).join('');
+  calc();
+}
+function nEdit(id,k,v,rerender){
+  const n=S.nurses.find(x=>x.id===id); n[k]=v;
+  changed();
+}
+function nGrade(id,g){
+  const n=S.nurses.find(x=>x.id===id); n.grade=g; n.nilai=GRADE[g];
+  const el=document.getElementById('nn-'+id); if(el) el.value=n.nilai;
+  changed();
+}
+
+/* ---------- Aksi ---------- */
+function addRoom(){
+  S.rooms.push({id:S.nextRoom++,name:'Ruangan Baru',rev:0});
+  renderRooms(); renderNurses(); save();
+}
+function delRoom(id){
+  const r=S.rooms.find(x=>x.id===id);
+  const c=S.nurses.filter(n=>n.room===id).length;
+  if(!confirm(`Hapus ruangan "${r.name}"${c?` beserta ${c} perawatnya`:''}?`)) return;
+  S.rooms=S.rooms.filter(x=>x.id!==id); S.nurses=S.nurses.filter(n=>n.room!==id);
+  renderRooms(); renderNurses(); save();
+}
+function newNurse(room){
+  const r=S.rooms.find(x=>x.id===room);
+  const k=S.nurses.filter(n=>n.room===room).length+1;
+  return {id:S.nextNurse++, name:`Perawat ${r.name} ${k}`, room, grade:'N2', nilai:GRADE.N2, iki:1};
+}
+function addNurse(){
+  if(!S.rooms.length){alert('Tambah ruangan dulu.');return;}
+  const fr=parseInt(document.getElementById('fRoom').value)||S.rooms[0].id;
+  S.nurses.push(newNurse(fr)); renderNurses(); save();
+  const w=document.querySelector('#paneN .tablewrap'); w.scrollTop=w.scrollHeight;
+}
+function delNurse(id){
+  S.nurses=S.nurses.filter(n=>n.id!==id); renderNurses(); save();
+}
+function setCount(roomId,inp){
+  let want=Math.max(0,parseInt(inp.value)||0);
+  const mine=S.nurses.filter(n=>n.room===roomId);
+  if(want>mine.length){
+    for(let i=mine.length;i<want;i++) S.nurses.push(newNurse(roomId));
+  }else if(want<mine.length){
+    const rm=mine.length-want;
+    if(!confirm(`Hapus ${rm} perawat terakhir dari ruangan ini?`)){inp.value=mine.length;return;}
+    const ids=new Set(mine.slice(want).map(n=>n.id));
+    S.nurses=S.nurses.filter(n=>!ids.has(n.id));
+  }
+  renderNurses(); save();
+}
+function showTab(t){
+  document.getElementById('paneR').classList.toggle('hide',t!=='R');
+  document.getElementById('paneN').classList.toggle('hide',t!=='N');
+  document.getElementById('tabR').classList.toggle('on',t==='R');
+  document.getElementById('tabN').classList.toggle('on',t==='N');
+}
+function resetAll(){
+  if(!confirm('Kembalikan ke data awal? Semua perubahan akan hilang (backup dulu bila perlu).')) return;
+  S=defaults(); init(); save();
+}
+function backup(){
+  download(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),`Backup_Jasa_Perawat_${fileTag()}.json`);
+}
+function restore(inp){
+  const f=inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const d=JSON.parse(rd.result);
+      if(!Array.isArray(d.rooms)||!Array.isArray(d.nurses)) throw 0;
+      S=d; init(); save();
+    }catch(e){alert('File backup tidak valid.');}
+    inp.value='';
+  };
+  rd.readAsText(f);
+}
+function fileTag(){return (S.periode||'data').replace(/[^\w\-]+/g,'_');}
+function download(blob,name){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+
+/* ---------- Ekspor Excel (.xlsx tanpa library) ---------- */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function zip(files){ // store, tanpa kompresi
+  const enc=new TextEncoder(), parts=[], cen=[]; let off=0;
+  const u16=v=>[v&255,(v>>8)&255], u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+  files.forEach(([name,str])=>{
+    const nb=enc.encode(name), d=enc.encode(str), c=crc32(d);
+    const lh=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(d.length),...u32(d.length),...u16(nb.length),...u16(0)]);
+    parts.push(lh,nb,d);
+    cen.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(d.length),...u32(d.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nb);
+    off+=lh.length+nb.length+d.length;
+  });
+  let cl=0; cen.forEach(p=>cl+=p.length);
+  const end=new Uint8Array([0x50,0x4b,5,6,0,0,0,0,...u16(files.length),...u16(files.length),...u32(cl),...u32(off),0,0]);
+  return new Blob([...parts,...cen,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function colName(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+const X=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');
+// cell: {v, s} ; s: 0 normal,1 header,2 angka #,##0,3 desimal 0.00,4 total teks,5 total angka,6 judul
+function sheetXml(rows,widths){
+  let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"/></sheetViews><cols>'+widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+'</cols><sheetData>';
+  rows.forEach((r,ri)=>{
+    x+=`<row r="${ri+1}">`;
+    r.forEach((c,ci)=>{
+      if(c===null||c===undefined||c==='') return;
+      const o=typeof c==='object'?c:{v:c,s:0}; const ref=colName(ci)+(ri+1);
+      if(typeof o.v==='number') x+=`<c r="${ref}" s="${o.s||0}"><v>${o.v}</v></c>`;
+      else x+=`<c r="${ref}" s="${o.s||0}" t="inlineStr"><is><t xml:space="preserve">${X(o.v)}</t></is></c>`;
+    });
+    x+='</row>';
+  });
+  return x+'</sheetData></worksheet>';
+}
+function buildXlsx(sheets){
+  const styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE3EDF7"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="3" fontId="2" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const n=sheets.length;
+  const files=[
+    ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')+'</Types>'],
+    ['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((s,i)=>`<sheet name="${X(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')+'</sheets></workbook>'],
+    ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')+`<Relationship Id="rId${n+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml',styles],
+    ...sheets.map((s,i)=>[`xl/worksheets/sheet${i+1}.xml`,sheetXml(s.rows,s.widths)])
+  ];
+  return zip(files);
+}
+function exportXlsx(){
+  calc();
+  const H=t=>({v:t,s:1}), N=v=>({v:+v||0,s:2}), D=v=>({v:+v||0,s:3}), T=t=>({v:t,s:4}), TN=v=>({v:+v||0,s:5});
+  const roomName=id=>(S.rooms.find(r=>r.id===id)||{}).name||'';
+  // Ringkasan
+  const sum=[
+    [{v:'Jasa Pelayanan Perawat — '+S.periode,s:6}],[],
+    ['Total Pendapatan (100%)',N(TOT.total)],
+    [`Pool Bersama (${dec(S.pct)}%)`,N(TOT.pool80)],
+    [`Pool Ruangan (${dec(100-S.pct)}%)`,N(TOT.pool20)],
+    ['Jumlah Perawat',N(TOT.count)],
+    ['Total Jasa Terbagi',N(TOT.dist)],
+    ['Sisa Tidak Terbagi',N(TOT.total-TOT.dist)],[],
+    ['Rumus'],
+    ['Indeks = Nilai Jabatan × IKI'],
+    ['Jasa Bersama = (Indeks ÷ Total indeks semua perawat) × Pool Bersama'],
+    ['Pool Ruangan = (Pendapatan ruangan ÷ Total pendapatan) × Total Pool Ruangan'],
+    ['Jasa Ruangan = (Indeks ÷ Total indeks ruangannya) × Pool Ruangan'],
+    ['Total Jasa = Jasa Bersama + Jasa Ruangan']
+  ];
+  // Ruangan
+  const rr=[[H('NO'),H('RUANGAN'),H('PENDAPATAN (100%)'),H('JML PERAWAT'),H('TOTAL INDEKS'),H('POOL RUANGAN'),H('JASA BERSAMA'),H('JASA RUANGAN'),H('TOTAL JASA'),H('RATA-RATA / PERAWAT')]];
+  let c=0,ix=0,pl=0,a=0,b=0,t=0;
+  S.rooms.forEach((r,i)=>{const x=RRES[r.id]; rr.push([i+1,r.name,N(r.rev),N(x.cnt),D(x.idx),N(x.pool),N(x.a),N(x.b),N(x.t),N(x.cnt?x.t/x.cnt:0)]); c+=x.cnt;ix+=x.idx;pl+=x.pool;a+=x.a;b+=x.b;t+=x.t;});
+  rr.push([T(''),T('TOTAL'),TN(TOT.total),TN(c),{v:ix,s:5},TN(pl),TN(a),TN(b),TN(t),TN(c?t/c:0)]);
+  // Perawat
+  const nr=[[H('NO'),H('NAMA'),H('RUANGAN'),H('GRADE'),H('NILAI JABATAN'),H('IKI'),H('INDEKS'),H('JASA BERSAMA'),H('JASA RUANGAN'),H('TOTAL JASA')]];
+  let ta=0,tb=0,tt=0,ti=0;
+  S.nurses.forEach((n,i)=>{const x=RES[n.id]; nr.push([i+1,n.name,roomName(n.room),n.grade,N(n.nilai),D(n.iki),D(x.ix),N(x.a),N(x.b),N(x.t)]); ta+=x.a;tb+=x.b;tt+=x.t;ti+=x.ix;});
+  nr.push([T(''),T('TOTAL'),T(''),T(''),T(''),T(''),{v:ti,s:5},TN(ta),TN(tb),TN(tt)]);
+  const blob=buildXlsx([
+    {name:'Ringkasan',rows:sum,widths:[70,22]},
+    {name:'Ruangan',rows:rr,widths:[6,22,20,13,14,18,18,18,18,20]},
+    {name:'Perawat',rows:nr,widths:[6,30,20,8,15,8,12,17,17,17]}
+  ]);
+  download(blob,`Jasa_Perawat_${fileTag()}.xlsx`);
+}
+
+/* ---------- Init ---------- */
+function init(){
+  document.getElementById('periode').value=S.periode||'';
+  document.getElementById('pct').value=S.pct;
+  document.getElementById('target').value=S.target||'';
+  renderRooms(); renderNurses();
+}
+S=load(); init();
+if(!localStorage.getItem(KEY)) { try{save();}catch(e){} }
+</script>
+</body>
+</html>
